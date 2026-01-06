@@ -1,0 +1,52 @@
+package com.example.drools.rules;
+
+import com.example.drools.model.Order;
+
+// Rule 1: Apply 10% discount for Electronics orders over $100
+rule "Electronics Discount"
+    when
+        $order : Order(category == "Electronics", amount > 100, discount == 0)
+    then
+        $order.setDiscount(10.0);
+        $order.setDiscountReason("Electronics order over $100");
+        System.out.println("Rule fired: Electronics Discount for " + $order.getOrderId());
+end
+
+// Rule 2: Apply 15% discount for Electronics orders over $400
+rule "Premium Electronics Discount"
+    salience 10  // Higher priority than regular Electronics discount
+    when
+        $order : Order(category == "Electronics", amount > 400, discount == 0)
+    then
+        $order.setDiscount(15.0);
+        $order.setDiscountReason("Premium electronics order over $400");
+        System.out.println("Rule fired: Premium Electronics Discount for " + $order.getOrderId());
+end
+
+// Rule 3: Apply 5% discount for Books orders
+rule "Books Discount"
+    when
+        $order : Order(category == "Books", discount == 0)
+    then
+        $order.setDiscount(5.0);
+        $order.setDiscountReason("Books category discount");
+        System.out.println("Rule fired: Books Discount for " + $order.getOrderId());
+end
+
+// Rule 4: Apply 8% discount for Clothing orders over $150
+rule "Clothing Discount"
+    when
+        $order : Order(category == "Clothing", amount > 150, discount == 0)
+    then
+        $order.setDiscount(8.0);
+        $order.setDiscountReason("Clothing order over $150");
+        System.out.println("Rule fired: Clothing Discount for " + $order.getOrderId());
+end
+
+// Rule 5: Log high-value orders
+rule "High Value Order Alert"
+    when
+        $order : Order(amount > 300)
+    then
+        System.out.println("ALERT: High-value order detected - " + $order.getOrderId() + " ($" + $order.getAmount() + ")");
+end

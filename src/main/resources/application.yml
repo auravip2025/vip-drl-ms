@@ -1,0 +1,38 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: kyc-rules-service
+  
+  # Spring Cloud Function configuration
+  cloud:
+    function:
+      # Function definitions (comma-separated for multiple)
+      definition: getKycRequirements;health;getCustomerTypes;getAccountTypes
+
+# Actuator endpoints for health checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.example.kyc: DEBUG
+    org.drools: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

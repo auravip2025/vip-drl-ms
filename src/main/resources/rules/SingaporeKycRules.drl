@@ -1,0 +1,436 @@
+// ============================================
+// SINGAPORE BANK KYC RULES
+// Based on MAS (Monetary Authority of Singapore) Guidelines
+// ============================================
+package com.example.kyc.rules;
+
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+
+global List fieldsList;
+global List rulesList;
+global List documentsList;
+global List instructionsList;
+global Map responseData;
+
+// ----------------------------------------
+// HELPER FUNCTION
+// ----------------------------------------
+
+function void addField(List fieldsList, List rulesList, String fieldId, String fieldName, 
+                       String description, String fieldType, boolean mandatory, String category, 
+                       int displayOrder, String validationPattern, String validationMessage, 
+                       boolean documentRequired, String acceptedDocuments, String additionalNotes,
+                       String ruleName) {
+    Map field = new java.util.HashMap();
+    field.put("fieldId", fieldId);
+    field.put("fieldName", fieldName);
+    field.put("description", description);
+    field.put("fieldType", fieldType);
+    field.put("mandatory", mandatory);
+    field.put("category", category);
+    field.put("displayOrder", displayOrder);
+    field.put("validationPattern", validationPattern);
+    field.put("validationMessage", validationMessage);
+    field.put("documentRequired", documentRequired);
+    field.put("acceptedDocuments", acceptedDocuments);
+    field.put("additionalNotes", additionalNotes);
+    fieldsList.add(field);
+    if (!rulesList.contains(ruleName)) {
+        rulesList.add(ruleName);
+    }
+}
+
+// ----------------------------------------
+// BASIC PERSONAL DETAILS (All Customers)
+// ----------------------------------------
+
+rule "Basic Personal Details - Full Name"
+    salience 100
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "full_name", "Full Name (as per NRIC/Passport)",
+            "Enter your full legal name exactly as it appears on your identification document",
+            "STRING", true, "PERSONAL_DETAILS", 1,
+            "^[a-zA-Z\\s]{2,100}$", "Please enter a valid name (letters and spaces only)",
+            false, null, null, "Basic Personal Details - Full Name");
+end
+
+rule "Basic Personal Details - Date of Birth"
+    salience 99
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "date_of_birth", "Date of Birth",
+            "Your date of birth (must be 18 years or above)",
+            "DATE", true, "PERSONAL_DETAILS", 2,
+            null, null, false, null, null, "Basic Personal Details - Date of Birth");
+end
+
+rule "Basic Personal Details - Gender"
+    salience 98
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "gender", "Gender", "Select your gender",
+            "DROPDOWN", true, "PERSONAL_DETAILS", 3,
+            null, null, false, null, null, "Basic Personal Details - Gender");
+end
+
+rule "Basic Personal Details - Nationality"
+    salience 97
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "nationality", "Nationality", "Your current nationality/citizenship",
+            "DROPDOWN", true, "PERSONAL_DETAILS", 4,
+            null, null, false, null, null, "Basic Personal Details - Nationality");
+end
+
+// ----------------------------------------
+// IDENTIFICATION DOCUMENTS
+// ----------------------------------------
+
+rule "Singapore Citizen/PR - NRIC Required"
+    salience 90
+    when
+        $request : Map(this["nationality"] == null || this["nationality"] == "SINGAPORE" || this["nationality"] == "")
+    then
+        addField(fieldsList, rulesList,
+            "nric", "NRIC Number", "Your 9-character NRIC number (e.g., S1234567A)",
+            "STRING", true, "IDENTIFICATION", 1,
+            "^[STFG]\\d{7}[A-Z]$", "Please enter a valid NRIC (e.g., S1234567A)",
+            false, null, null, "Singapore Citizen/PR - NRIC Required");
+        
+        addField(fieldsList, rulesList,
+            "nric_document", "NRIC Copy", "Upload a clear copy of both sides of your NRIC",
+            "DOCUMENT", true, "IDENTIFICATION", 2,
+            null, null, true, "NRIC Front,NRIC Back", null, "Singapore Citizen/PR - NRIC Document");
+        
+        documentsList.add("NRIC Front");
+        documentsList.add("NRIC Back");
+end
+
+rule "Foreigner - Passport Required"
+    salience 88
+    when
+        $request : Map(this["customerType"] == "FOREIGNER" || 
+                      (this["nationality"] != null && this["nationality"] != "SINGAPORE" && this["nationality"] != ""))
+    then
+        addField(fieldsList, rulesList,
+            "passport_number", "Passport Number", "Your valid passport number",
+            "STRING", true, "IDENTIFICATION", 1,
+            "^[A-Z0-9]{6,12}$", "Please enter a valid passport number",
+            false, null, null, "Foreigner - Passport Required");
+        
+        addField(fieldsList, rulesList,
+            "passport_document", "Passport Copy", "Upload a clear copy of your passport bio-data page",
+            "DOCUMENT", true, "IDENTIFICATION", 2,
+            null, null, true, "Passport Bio-data Page", null, "Foreigner - Passport Document");
+        
+        addField(fieldsList, rulesList,
+            "visa_document", "Valid Visa/Work Pass", "Upload a copy of your valid Singapore visa or work pass",
+            "DOCUMENT", true, "IDENTIFICATION", 3,
+            null, null, true, "Employment Pass,S Pass,Work Permit,Dependent Pass,Long Term Visit Pass", null, "Foreigner - Visa Required");
+        
+        documentsList.add("Passport Bio-data Page");
+        documentsList.add("Valid Work Pass");
+end
+
+// ----------------------------------------
+// CONTACT INFORMATION
+// ----------------------------------------
+
+rule "Contact Details - Address"
+    salience 80
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "residential_address", "Residential Address", "Your current residential address in Singapore",
+            "ADDRESS", true, "CONTACT_DETAILS", 1,
+            null, null, false, null, null, "Contact Details - Address");
+        
+        addField(fieldsList, rulesList,
+            "postal_code", "Postal Code", "6-digit Singapore postal code",
+            "STRING", true, "CONTACT_DETAILS", 2,
+            "^\\d{6}$", "Please enter a valid 6-digit postal code",
+            false, null, null, "Contact Details - Postal Code");
+end
+
+rule "Contact Details - Mobile"
+    salience 79
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "mobile_number", "Mobile Number", "Singapore mobile number for OTP verification",
+            "PHONE", true, "CONTACT_DETAILS", 3,
+            "^[89]\\d{7}$", "Please enter a valid Singapore mobile number (8 digits starting with 8 or 9)",
+            false, null, null, "Contact Details - Mobile");
+end
+
+rule "Contact Details - Email"
+    salience 78
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "email", "Email Address", "Your email address for correspondence",
+            "EMAIL", true, "CONTACT_DETAILS", 4,
+            "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$", "Please enter a valid email address",
+            false, null, null, "Contact Details - Email");
+end
+
+// ----------------------------------------
+// EMPLOYMENT & INCOME DETAILS
+// ----------------------------------------
+
+rule "Employment Details - Basic"
+    salience 70
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "employment_status", "Employment Status", "Your current employment status",
+            "DROPDOWN", true, "EMPLOYMENT", 1,
+            null, null, false, null, null, "Employment Details - Basic");
+        
+        addField(fieldsList, rulesList,
+            "occupation", "Occupation/Job Title", "Your current occupation or job title",
+            "STRING", true, "EMPLOYMENT", 2,
+            null, null, false, null, null, "Employment Details - Occupation");
+        
+        addField(fieldsList, rulesList,
+            "employer_name", "Employer Name", "Name of your current employer (if employed)",
+            "STRING", false, "EMPLOYMENT", 3,
+            null, null, false, null, null, "Employment Details - Employer");
+end
+
+rule "Income Details - Required for High Value Accounts"
+    salience 69
+    when
+        $request : Map(this["accountType"] == "INVESTMENT" || 
+                      this["accountType"] == "LOAN" ||
+                      (this["initialDeposit"] != null && ((Number)this["initialDeposit"]).doubleValue() >= 20000))
+    then
+        addField(fieldsList, rulesList,
+            "annual_income", "Annual Income (SGD)", "Your gross annual income in Singapore Dollars",
+            "NUMBER", true, "FINANCIAL", 1,
+            null, null, false, null, null, "Income Details - Annual Income");
+        
+        addField(fieldsList, rulesList,
+            "income_proof", "Proof of Income", "Document showing your income",
+            "DOCUMENT", true, "FINANCIAL", 2,
+            null, null, true, "Payslip (last 3 months),Income Tax Notice of Assessment,CPF Statement,Employment Letter", null, "Income Details - Proof");
+        
+        documentsList.add("Proof of Income");
+end
+
+// ----------------------------------------
+// TAX RESIDENCY (CRS/FATCA Compliance)
+// ----------------------------------------
+
+rule "Tax Residency - Singapore"
+    salience 60
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "sg_tax_resident", "Singapore Tax Resident", "Are you a tax resident of Singapore?",
+            "CHECKBOX", true, "TAX_INFORMATION", 1,
+            null, null, false, null, null, "Tax Residency - Singapore");
+end
+
+rule "Tax Residency - Foreign Tax"
+    salience 59
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "foreign_tax_resident", "Foreign Tax Residency", "Are you a tax resident of any other country?",
+            "CHECKBOX", true, "TAX_INFORMATION", 2,
+            null, null, false, null, null, "Tax Residency - Foreign");
+        
+        addField(fieldsList, rulesList,
+            "foreign_tin", "Foreign Tax Identification Number", "If yes, please provide your foreign TIN",
+            "STRING", false, "TAX_INFORMATION", 3,
+            null, null, false, null, "Required if you are a tax resident of another country", "Tax Residency - Foreign TIN");
+end
+
+// ----------------------------------------
+// CORPORATE CUSTOMER REQUIREMENTS
+// ----------------------------------------
+
+rule "Corporate - Company Details"
+    salience 50
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "company_name", "Company Name", "Registered company name",
+            "STRING", true, "COMPANY_DETAILS", 1,
+            null, null, false, null, null, "Corporate - Company Name");
+        
+        addField(fieldsList, rulesList,
+            "uen", "UEN (Unique Entity Number)", "Your company's UEN registered with ACRA",
+            "STRING", true, "COMPANY_DETAILS", 2,
+            "^[0-9]{8,9}[A-Z]$", "Please enter a valid UEN",
+            false, null, null, "Corporate - UEN");
+        
+        addField(fieldsList, rulesList,
+            "acra_bizfile", "ACRA Business Profile", "Recent ACRA BizFile (not older than 3 months)",
+            "DOCUMENT", true, "COMPANY_DETAILS", 3,
+            null, null, true, "ACRA Business Profile", null, "Corporate - ACRA BizFile");
+        
+        documentsList.add("ACRA Business Profile");
+        responseData.put("estimatedProcessingDays", 7);
+end
+
+rule "Corporate - Directors and Shareholders"
+    salience 49
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "director_details", "Director(s) Information", "Full details of all company directors",
+            "STRING", true, "COMPANY_DETAILS", 4,
+            null, null, false, null, null, "Corporate - Directors");
+        
+        addField(fieldsList, rulesList,
+            "shareholder_details", "Shareholder(s) Information", "Details of shareholders with 25% or more ownership",
+            "STRING", true, "COMPANY_DETAILS", 5,
+            null, null, false, null, "Include NRIC/Passport of beneficial owners with 25% or more stake", "Corporate - Shareholders");
+        
+        addField(fieldsList, rulesList,
+            "board_resolution", "Board Resolution", "Board resolution authorizing account opening",
+            "DOCUMENT", true, "COMPANY_DETAILS", 6,
+            null, null, true, "Board Resolution", null, "Corporate - Board Resolution");
+        
+        documentsList.add("Board Resolution");
+end
+
+// ----------------------------------------
+// PEP (Politically Exposed Person) RULES
+// ----------------------------------------
+
+rule "PEP - Enhanced Due Diligence"
+    salience 40
+    when
+        $request : Map(this["pep"] == true || this["pep"] == "true")
+    then
+        responseData.put("enhancedDueDiligenceRequired", true);
+        responseData.put("riskLevel", "HIGH");
+        responseData.put("estimatedProcessingDays", 14);
+        
+        addField(fieldsList, rulesList,
+            "pep_position", "PEP Position Details", "Details of your politically exposed position",
+            "STRING", true, "PEP_DECLARATION", 1,
+            null, null, false, null, null, "PEP - Position Details");
+        
+        addField(fieldsList, rulesList,
+            "source_of_wealth", "Source of Wealth Declaration", "Documentation proving the source of your wealth",
+            "DOCUMENT", true, "PEP_DECLARATION", 2,
+            null, null, true, "Bank Statements,Tax Returns,Property Documents,Investment Statements", null, "PEP - Source of Wealth");
+        
+        documentsList.add("Source of Wealth Documentation");
+        instructionsList.add("As a Politically Exposed Person, your application requires enhanced due diligence review.");
+        instructionsList.add("Additional documentation may be requested during the review process.");
+end
+
+// ----------------------------------------
+// HIGH RISK INDICATORS
+// ----------------------------------------
+
+rule "High Value Transaction - Enhanced Review"
+    salience 35
+    when
+        $request : Map(this["initialDeposit"] != null && ((Number)this["initialDeposit"]).doubleValue() >= 50000)
+    then
+        responseData.put("riskLevel", "MEDIUM");
+        Integer currentDays = (Integer) responseData.get("estimatedProcessingDays");
+        if (currentDays == null || currentDays < 5) {
+            responseData.put("estimatedProcessingDays", 5);
+        }
+        
+        addField(fieldsList, rulesList,
+            "source_of_funds", "Source of Funds", "Please explain the source of funds for initial deposit",
+            "STRING", true, "FINANCIAL", 5,
+            null, null, false, null, null, "High Value Transaction - Source of Funds");
+        
+        instructionsList.add("High value deposits require additional verification of source of funds.");
+end
+
+rule "Investment Account - Risk Assessment"
+    salience 34
+    when
+        $request : Map(this["accountType"] == "INVESTMENT")
+    then
+        addField(fieldsList, rulesList,
+            "investment_experience", "Investment Experience", "Years of investment experience",
+            "DROPDOWN", true, "INVESTMENT_PROFILE", 1,
+            null, null, false, null, null, "Investment - Experience");
+        
+        addField(fieldsList, rulesList,
+            "risk_tolerance", "Risk Tolerance", "Your investment risk tolerance level",
+            "DROPDOWN", true, "INVESTMENT_PROFILE", 2,
+            null, null, false, null, null, "Investment - Risk Tolerance");
+        
+        addField(fieldsList, rulesList,
+            "investment_objective", "Investment Objective", "Your primary investment objective",
+            "DROPDOWN", true, "INVESTMENT_PROFILE", 3,
+            null, null, false, null, null, "Investment - Objective");
+end
+
+// ----------------------------------------
+// CREDIT PRODUCTS
+// ----------------------------------------
+
+rule "Loan/Credit - Financial Assessment"
+    salience 33
+    when
+        $request : Map(this["accountType"] == "LOAN" || this["accountType"] == "CREDIT_CARD")
+    then
+        addField(fieldsList, rulesList,
+            "existing_commitments", "Existing Financial Commitments", "Details of existing loans and credit facilities",
+            "STRING", true, "CREDIT_ASSESSMENT", 1,
+            null, null, false, null, null, "Credit - Existing Commitments");
+        
+        addField(fieldsList, rulesList,
+            "credit_bureau_consent", "Credit Bureau Consent", "I consent to credit bureau checks",
+            "CHECKBOX", true, "CREDIT_ASSESSMENT", 2,
+            null, null, false, null, null, "Credit - Bureau Consent");
+        
+        instructionsList.add("A credit bureau check will be performed as part of the application process.");
+end
+
+// ----------------------------------------
+// DECLARATIONS
+// ----------------------------------------
+
+rule "Standard Declarations"
+    salience 10
+    when
+        $request : Map(this["customerType"] != null)
+    then
+        addField(fieldsList, rulesList,
+            "pdpa_consent", "PDPA Consent", "I consent to the collection, use, and disclosure of my personal data in accordance with the bank's privacy policy",
+            "CHECKBOX", true, "DECLARATIONS", 1,
+            null, null, false, null, null, "Declarations - PDPA");
+        
+        addField(fieldsList, rulesList,
+            "terms_acceptance", "Terms and Conditions", "I have read and agree to the Terms and Conditions",
+            "CHECKBOX", true, "DECLARATIONS", 2,
+            null, null, false, null, null, "Declarations - Terms");
+        
+        addField(fieldsList, rulesList,
+            "information_accuracy", "Declaration of Accuracy", "I declare that all information provided is true and accurate",
+            "CHECKBOX", true, "DECLARATIONS", 3,
+            null, null, false, null, null, "Declarations - Accuracy");
+end
