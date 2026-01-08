@@ -1,0 +1,489 @@
+// ============================================
+// CORPORATE CUSTOMER PRODUCT-SPECIFIC KYC RULES
+// Products: FX (Foreign Exchange), Trading, CASA (Current Account Savings Account)
+// ============================================
+package com.example.kyc.rules;
+
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+
+global List fieldsList;
+global List rulesList;
+global List documentsList;
+global List instructionsList;
+global Map responseData;
+
+// ----------------------------------------
+// BASIC CORPORATE DETAILS (All Products)
+// ----------------------------------------
+
+rule "Corporate - Company Registration"
+    salience 100
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "company_name", "Registered Company Name",
+            "Full legal name of the company as registered with ACRA",
+            "STRING", true, "COMPANY_INFORMATION", 1,
+            null, null, false, null, null, "Corporate - Company Registration");
+        
+        addField(fieldsList, rulesList,
+            "uen", "UEN (Unique Entity Number)",
+            "Company's UEN registered with ACRA",
+            "STRING", true, "COMPANY_INFORMATION", 2,
+            "^[0-9]{8,9}[A-Z]$", "Please enter a valid UEN (8-9 digits followed by a letter)",
+            false, null, null, "Corporate - UEN");
+        
+        addField(fieldsList, rulesList,
+            "incorporation_date", "Date of Incorporation",
+            "Date when the company was incorporated",
+            "DATE", true, "COMPANY_INFORMATION", 3,
+            null, null, false, null, null, "Corporate - Incorporation Date");
+        
+        addField(fieldsList, rulesList,
+            "business_nature", "Nature of Business",
+            "Primary business activity of the company",
+            "STRING", true, "COMPANY_INFORMATION", 4,
+            null, null, false, null, null, "Corporate - Business Nature");
+        
+        addField(fieldsList, rulesList,
+            "acra_bizfile", "ACRA Business Profile",
+            "Recent ACRA BizFile (not older than 3 months)",
+            "DOCUMENT", true, "COMPANY_INFORMATION", 5,
+            null, null, true, "ACRA Business Profile", null, "Corporate - ACRA BizFile");
+        
+        documentsList.add("ACRA Business Profile");
+        responseData.put("estimatedProcessingDays", 7);
+end
+
+rule "Corporate - Registered Address"
+    salience 99
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "registered_address", "Registered Office Address",
+            "Company's registered office address in Singapore",
+            "ADDRESS", true, "COMPANY_INFORMATION", 6,
+            null, null, false, null, null, "Corporate - Registered Address");
+        
+        addField(fieldsList, rulesList,
+            "business_address", "Principal Place of Business",
+            "Main business operating address (if different from registered address)",
+            "ADDRESS", false, "COMPANY_INFORMATION", 7,
+            null, null, false, null, "Required if different from registered address", "Corporate - Business Address");
+end
+
+rule "Corporate - Contact Information"
+    salience 98
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "company_phone", "Company Contact Number",
+            "Main contact number for the company",
+            "PHONE", true, "COMPANY_INFORMATION", 8,
+            "^[689]\\d{7}$", "Please enter a valid Singapore phone number",
+            false, null, null, "Corporate - Phone");
+        
+        addField(fieldsList, rulesList,
+            "company_email", "Company Email Address",
+            "Official company email address",
+            "EMAIL", true, "COMPANY_INFORMATION", 9,
+            "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$", "Please enter a valid email address",
+            false, null, null, "Corporate - Email");
+end
+
+// ----------------------------------------
+// DIRECTORS & SHAREHOLDERS (All Products)
+// ----------------------------------------
+
+rule "Corporate - Directors Information"
+    salience 95
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "num_directors", "Number of Directors",
+            "Total number of company directors",
+            "NUMBER", true, "DIRECTORS_SHAREHOLDERS", 1,
+            null, null, false, null, null, "Corporate - Number of Directors");
+        
+        addField(fieldsList, rulesList,
+            "directors_list", "Directors Details",
+            "Full name, NRIC/Passport, nationality, and residential address of all directors",
+            "STRING", true, "DIRECTORS_SHAREHOLDERS", 2,
+            null, null, false, null, "Provide details for each director", "Corporate - Directors List");
+        
+        addField(fieldsList, rulesList,
+            "directors_id_documents", "Directors' Identification Documents",
+            "NRIC (both sides) or Passport copies of all directors",
+            "DOCUMENT", true, "DIRECTORS_SHAREHOLDERS", 3,
+            null, null, true, "NRIC Front,NRIC Back,Passport", null, "Corporate - Directors ID");
+        
+        documentsList.add("Directors' ID Documents");
+end
+
+rule "Corporate - Shareholders Information"
+    salience 94
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "shareholders_list", "Shareholders Details (25% and above)",
+            "Details of all shareholders holding 25% or more of company shares",
+            "STRING", true, "DIRECTORS_SHAREHOLDERS", 4,
+            null, null, false, null, "Include name, NRIC/UEN, shareholding percentage", "Corporate - Shareholders");
+        
+        addField(fieldsList, rulesList,
+            "beneficial_owners", "Ultimate Beneficial Owners",
+            "Details of individuals who ultimately own or control 25% or more",
+            "STRING", true, "DIRECTORS_SHAREHOLDERS", 5,
+            null, null, false, null, "Required for AML/CFT compliance", "Corporate - Beneficial Owners");
+        
+        addField(fieldsList, rulesList,
+            "shareholders_documents", "Shareholders' Documents",
+            "ID documents of shareholders with 25% or more ownership",
+            "DOCUMENT", true, "DIRECTORS_SHAREHOLDERS", 6,
+            null, null, true, "NRIC,Passport,Company Registration (for corporate shareholders)", null, "Corporate - Shareholders Documents");
+        
+        documentsList.add("Shareholders' Documents");
+end
+
+rule "Corporate - Board Resolution"
+    salience 93
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "board_resolution", "Board Resolution",
+            "Board resolution authorizing account opening and appointing authorized signatories",
+            "DOCUMENT", true, "DIRECTORS_SHAREHOLDERS", 7,
+            null, null, true, "Board Resolution", null, "Corporate - Board Resolution");
+        
+        addField(fieldsList, rulesList,
+            "authorized_signatories", "Authorized Signatories",
+            "List of persons authorized to operate the account",
+            "STRING", true, "DIRECTORS_SHAREHOLDERS", 8,
+            null, null, false, null, "Include name, designation, and specimen signature", "Corporate - Authorized Signatories");
+        
+        documentsList.add("Board Resolution");
+end
+
+// ----------------------------------------
+// FINANCIAL INFORMATION (All Products)
+// ----------------------------------------
+
+rule "Corporate - Financial Details"
+    salience 90
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "paid_up_capital", "Paid-Up Capital (SGD)",
+            "Company's paid-up capital amount",
+            "NUMBER", true, "FINANCIAL_INFORMATION", 1,
+            null, null, false, null, null, "Corporate - Paid-Up Capital");
+        
+        addField(fieldsList, rulesList,
+            "annual_revenue", "Annual Revenue (SGD)",
+            "Company's annual revenue for the last financial year",
+            "NUMBER", true, "FINANCIAL_INFORMATION", 2,
+            null, null, false, null, null, "Corporate - Annual Revenue");
+        
+        addField(fieldsList, rulesList,
+            "financial_statements", "Audited Financial Statements",
+            "Latest audited financial statements (if applicable)",
+            "DOCUMENT", false, "FINANCIAL_INFORMATION", 3,
+            null, null, true, "Financial Statements,Management Accounts", "Required for companies with revenue > SGD 1M", "Corporate - Financial Statements");
+end
+
+// ----------------------------------------
+// PRODUCT: CASA (Current Account Savings Account)
+// ----------------------------------------
+
+rule "CASA - Basic Account Details"
+    salience 80
+    when
+        $request : Map(this["customerType"] == "CORPORATE", this["product"] == "CASA")
+    then
+        addField(fieldsList, rulesList,
+            "account_currency", "Account Currency",
+            "Preferred currency for the account",
+            "DROPDOWN", true, "PRODUCT_CASA", 1,
+            null, null, false, null, "SGD, USD, EUR, GBP, etc.", "CASA - Account Currency");
+        
+        addField(fieldsList, rulesList,
+            "initial_deposit_casa", "Initial Deposit Amount",
+            "Initial deposit amount to open the account",
+            "NUMBER", true, "PRODUCT_CASA", 2,
+            null, null, false, null, "Minimum SGD 1,000 for corporate accounts", "CASA - Initial Deposit");
+        
+        addField(fieldsList, rulesList,
+            "expected_monthly_transactions", "Expected Monthly Transactions",
+            "Estimated number of transactions per month",
+            "NUMBER", true, "PRODUCT_CASA", 3,
+            null, null, false, null, null, "CASA - Monthly Transactions");
+        
+        addField(fieldsList, rulesList,
+            "expected_monthly_turnover", "Expected Monthly Turnover (SGD)",
+            "Estimated monthly account turnover",
+            "NUMBER", true, "PRODUCT_CASA", 4,
+            null, null, false, null, null, "CASA - Monthly Turnover");
+        
+        responseData.put("productType", "CASA");
+end
+
+// ----------------------------------------
+// PRODUCT: FX (Foreign Exchange)
+// ----------------------------------------
+
+rule "FX - Trading Requirements"
+    salience 80
+    when
+        $request : Map(this["customerType"] == "CORPORATE", this["product"] == "FX")
+    then
+        responseData.put("riskLevel", "MEDIUM");
+        responseData.put("estimatedProcessingDays", 10);
+        responseData.put("productType", "FX");
+        
+        addField(fieldsList, rulesList,
+            "fx_experience", "FX Trading Experience",
+            "Company's experience in foreign exchange trading",
+            "DROPDOWN", true, "PRODUCT_FX", 1,
+            null, null, false, null, "None, Less than 1 year, 1-3 years, 3-5 years, More than 5 years", "FX - Experience");
+        
+        addField(fieldsList, rulesList,
+            "fx_purpose", "Purpose of FX Trading",
+            "Primary purpose for FX trading (Hedging, Speculation, Trade Settlement, etc.)",
+            "STRING", true, "PRODUCT_FX", 2,
+            null, null, false, null, null, "FX - Purpose");
+        
+        addField(fieldsList, rulesList,
+            "fx_currency_pairs", "Currency Pairs of Interest",
+            "List of currency pairs the company intends to trade",
+            "STRING", true, "PRODUCT_FX", 3,
+            null, null, false, null, "e.g., USD/SGD, EUR/USD, GBP/SGD", "FX - Currency Pairs");
+        
+        addField(fieldsList, rulesList,
+            "fx_expected_volume", "Expected Monthly FX Volume (SGD)",
+            "Estimated monthly FX trading volume",
+            "NUMBER", true, "PRODUCT_FX", 4,
+            null, null, false, null, null, "FX - Expected Volume");
+        
+        addField(fieldsList, rulesList,
+            "fx_risk_policy", "FX Risk Management Policy",
+            "Company's policy for managing FX risk",
+            "DOCUMENT", true, "PRODUCT_FX", 5,
+            null, null, true, "Risk Management Policy,Treasury Policy", null, "FX - Risk Policy");
+        
+        addField(fieldsList, rulesList,
+            "fx_authorized_dealers", "Authorized FX Dealers",
+            "List of persons authorized to execute FX transactions",
+            "STRING", true, "PRODUCT_FX", 6,
+            null, null, false, null, "Include name, designation, and contact details", "FX - Authorized Dealers");
+        
+        documentsList.add("FX Risk Management Policy");
+        instructionsList.add("FX trading requires enhanced due diligence and risk assessment.");
+        instructionsList.add("Company must demonstrate understanding of FX risks and have appropriate controls.");
+end
+
+// ----------------------------------------
+// PRODUCT: TRADING (Securities/Derivatives)
+// ----------------------------------------
+
+rule "Trading - Account Requirements"
+    salience 80
+    when
+        $request : Map(this["customerType"] == "CORPORATE", this["product"] == "TRADING")
+    then
+        responseData.put("riskLevel", "HIGH");
+        responseData.put("estimatedProcessingDays", 14);
+        responseData.put("enhancedDueDiligenceRequired", true);
+        responseData.put("productType", "TRADING");
+        
+        addField(fieldsList, rulesList,
+            "trading_experience", "Trading Experience",
+            "Company's experience in securities/derivatives trading",
+            "DROPDOWN", true, "PRODUCT_TRADING", 1,
+            null, null, false, null, "None, Less than 1 year, 1-3 years, 3-5 years, More than 5 years", "Trading - Experience");
+        
+        addField(fieldsList, rulesList,
+            "trading_instruments", "Instruments to Trade",
+            "Types of securities/derivatives the company intends to trade",
+            "STRING", true, "PRODUCT_TRADING", 2,
+            null, null, false, null, "e.g., Equities, Bonds, Futures, Options, CFDs", "Trading - Instruments");
+        
+        addField(fieldsList, rulesList,
+            "trading_strategy", "Trading Strategy",
+            "Description of company's trading strategy and objectives",
+            "STRING", true, "PRODUCT_TRADING", 3,
+            null, null, false, null, null, "Trading - Strategy");
+        
+        addField(fieldsList, rulesList,
+            "trading_capital", "Trading Capital (SGD)",
+            "Amount of capital allocated for trading activities",
+            "NUMBER", true, "PRODUCT_TRADING", 4,
+            null, null, false, null, "Minimum SGD 100,000 required", "Trading - Capital");
+        
+        addField(fieldsList, rulesList,
+            "trading_risk_appetite", "Risk Appetite Statement",
+            "Company's risk appetite and tolerance levels",
+            "DOCUMENT", true, "PRODUCT_TRADING", 5,
+            null, null, true, "Risk Appetite Statement,Investment Policy", null, "Trading - Risk Appetite");
+        
+        addField(fieldsList, rulesList,
+            "trading_compliance_officer", "Compliance Officer Details",
+            "Details of person responsible for trading compliance",
+            "STRING", true, "PRODUCT_TRADING", 6,
+            null, null, false, null, "Include name, qualifications, and contact details", "Trading - Compliance Officer");
+        
+        addField(fieldsList, rulesList,
+            "trading_authorization", "Trading Authorization Matrix",
+            "Document showing trading limits and authorization levels",
+            "DOCUMENT", true, "PRODUCT_TRADING", 7,
+            null, null, true, "Authorization Matrix,Delegation of Authority", null, "Trading - Authorization");
+        
+        addField(fieldsList, rulesList,
+            "financial_advisor_license", "Financial Advisor License (if applicable)",
+            "Copy of CMS license if company is a licensed financial advisor",
+            "DOCUMENT", false, "PRODUCT_TRADING", 8,
+            null, null, true, "CMS License,MAS License", "Required if company is a licensed entity", "Trading - License");
+        
+        documentsList.add("Risk Appetite Statement");
+        documentsList.add("Trading Authorization Matrix");
+        
+        instructionsList.add("Trading account requires enhanced due diligence and regulatory compliance checks.");
+        instructionsList.add("Company must demonstrate adequate financial resources and risk management capabilities.");
+        instructionsList.add("Additional documentation may be requested based on trading activities.");
+end
+
+// ----------------------------------------
+// TAX & COMPLIANCE (All Products)
+// ----------------------------------------
+
+rule "Corporate - Tax Information"
+    salience 70
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "tax_residency", "Tax Residency",
+            "Country/countries where the company is tax resident",
+            "STRING", true, "TAX_COMPLIANCE", 1,
+            null, null, false, null, null, "Corporate - Tax Residency");
+        
+        addField(fieldsList, rulesList,
+            "tax_identification_number", "Tax Identification Number",
+            "Company's tax identification number",
+            "STRING", true, "TAX_COMPLIANCE", 2,
+            null, null, false, null, null, "Corporate - TIN");
+        
+        addField(fieldsList, rulesList,
+            "fatca_classification", "FATCA Classification",
+            "Company's FATCA classification status",
+            "DROPDOWN", true, "TAX_COMPLIANCE", 3,
+            null, null, false, null, "Active NFFE, Passive NFFE, Financial Institution, etc.", "Corporate - FATCA");
+        
+        addField(fieldsList, rulesList,
+            "crs_self_certification", "CRS Self-Certification",
+            "Common Reporting Standard self-certification form",
+            "DOCUMENT", true, "TAX_COMPLIANCE", 4,
+            null, null, true, "CRS Self-Certification Form", null, "Corporate - CRS");
+        
+        documentsList.add("CRS Self-Certification");
+end
+
+// ----------------------------------------
+// AML/CFT REQUIREMENTS (All Products)
+// ----------------------------------------
+
+rule "Corporate - AML/CFT Compliance"
+    salience 65
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "source_of_funds", "Source of Funds",
+            "Description of the source of funds for account funding",
+            "STRING", true, "AML_CFT", 1,
+            null, null, false, null, "e.g., Business revenue, Investment income, Loan proceeds", "AML - Source of Funds");
+        
+        addField(fieldsList, rulesList,
+            "business_countries", "Countries of Business Operation",
+            "List of countries where the company conducts business",
+            "STRING", true, "AML_CFT", 2,
+            null, null, false, null, null, "AML - Business Countries");
+        
+        addField(fieldsList, rulesList,
+            "pep_declaration", "PEP Declaration",
+            "Declaration if any director/shareholder is a Politically Exposed Person",
+            "CHECKBOX", true, "AML_CFT", 3,
+            null, null, false, null, null, "AML - PEP Declaration");
+        
+        addField(fieldsList, rulesList,
+            "sanctions_screening", "Sanctions Screening Consent",
+            "Consent for sanctions and adverse media screening",
+            "CHECKBOX", true, "AML_CFT", 4,
+            null, null, false, null, null, "AML - Sanctions Consent");
+end
+
+rule "Corporate - Enhanced Due Diligence for High Risk"
+    salience 60
+    when
+        $request : Map(this["customerType"] == "CORPORATE", 
+                      (this["product"] == "FX" || this["product"] == "TRADING"))
+    then
+        addField(fieldsList, rulesList,
+            "business_plan", "Business Plan",
+            "Detailed business plan including revenue model and projections",
+            "DOCUMENT", true, "AML_CFT", 5,
+            null, null, true, "Business Plan,Financial Projections", null, "EDD - Business Plan");
+        
+        addField(fieldsList, rulesList,
+            "source_of_wealth", "Source of Wealth",
+            "Documentation showing the source of company's wealth",
+            "DOCUMENT", true, "AML_CFT", 6,
+            null, null, true, "Bank Statements,Asset Valuation,Investment Portfolio", null, "EDD - Source of Wealth");
+        
+        documentsList.add("Business Plan");
+        documentsList.add("Source of Wealth Documentation");
+        
+        instructionsList.add("Enhanced due diligence documentation required for high-risk products.");
+end
+
+// ----------------------------------------
+// DECLARATIONS (All Products)
+// ----------------------------------------
+
+rule "Corporate - Standard Declarations"
+    salience 10
+    when
+        $request : Map(this["customerType"] == "CORPORATE")
+    then
+        addField(fieldsList, rulesList,
+            "pdpa_consent", "PDPA Consent",
+            "Company consents to collection, use, and disclosure of data in accordance with PDPA",
+            "CHECKBOX", true, "DECLARATIONS", 1,
+            null, null, false, null, null, "Declarations - PDPA");
+        
+        addField(fieldsList, rulesList,
+            "terms_acceptance", "Terms and Conditions",
+            "Company has read and agrees to the Terms and Conditions",
+            "CHECKBOX", true, "DECLARATIONS", 2,
+            null, null, false, null, null, "Declarations - Terms");
+        
+        addField(fieldsList, rulesList,
+            "information_accuracy", "Declaration of Accuracy",
+            "Company declares that all information provided is true, accurate, and complete",
+            "CHECKBOX", true, "DECLARATIONS", 3,
+            null, null, false, null, null, "Declarations - Accuracy");
+        
+        addField(fieldsList, rulesList,
+            "authorized_signatory_declaration", "Authorized Signatory Declaration",
+            "Signatory confirms authority to sign on behalf of the company",
+            "CHECKBOX", true, "DECLARATIONS", 4,
+            null, null, false, null, null, "Declarations - Authority");
+end

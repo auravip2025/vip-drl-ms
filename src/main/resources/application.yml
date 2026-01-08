@@ -9,7 +9,7 @@ spring:
   cloud:
     function:
       # Function definitions (comma-separated for multiple)
-      definition: getKycRequirements;health;getCustomerTypes;getAccountTypes
+      definition: getKycRequirements;health;getCustomerTypes;getAccountTypes;getCorporateKycRequirements;getCorporateProducts
 
 # Actuator endpoints for health checks
 management:
@@ -36,3 +36,18 @@ logging:
     org.drools: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    # Enable custom path
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+  # Additional paths for OpenAPI spec
+  paths-to-match: /api/**
+  show-actuator: false
