@@ -40,10 +40,13 @@ A **cloud-agnostic serverless** microservice using Spring Cloud Function and Dro
 ### Individual KYC
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v1/kyc/requirements` | Get individual KYC requirements |
+| POST | `/api/v1/kyc/requirements` | Get individual KYC requirements (detailed) |
+| POST | `/api/v1/kyc/product/requirements` | Get individual KYC requirements by product |
 | GET | `/api/v1/kyc/health` | Health check |
 | GET | `/api/v1/kyc/customer-types` | List customer types |
-| GET | `/api/v1/kyc/account-types` | List account types |
+| GET | `/api/v1/kyc/account-types` | List account types (simple list) |
+| GET | `/api/v1/kyc/products` | List individual products with descriptions |
+| GET | `/api/v1/kyc/supported-countries` | List supported countries from rules |
 
 ### Corporate KYC
 | Method | Endpoint | Description |
@@ -54,12 +57,14 @@ A **cloud-agnostic serverless** microservice using Spring Cloud Function and Dro
 ### Serverless Function Endpoints
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/getKycRequirements` | Individual KYC |
-| POST | `/getCorporateKycRequirements` | Corporate KYC |
+| POST | `/getKycRequirements` | Individual KYC (detailed) |
+| POST | `/getIndividualProductKycRequirements` | Individual KYC by product |
 | POST | `/health` | Health check |
 | POST | `/getCustomerTypes` | Customer types |
 | POST | `/getAccountTypes` | Account types |
+| POST | `/getIndividualProducts` | Individual products |
 | POST | `/getCorporateProducts` | Corporate products |
+| POST | `/getSupportedCountries` | Supported countries |
 
 ## API Documentation
 

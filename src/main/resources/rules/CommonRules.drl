@@ -1,0 +1,110 @@
+package com.example.kyc.rules;
+
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+
+global List fieldsList;
+global List rulesList;
+global List documentsList;
+global List instructionsList;
+global Map responseData;
+
+rule "Supported Countries Rule"
+    salience 1000
+    when
+        $request : Map(this["action"] == "getSupportedCountries")
+    then
+        List countries = new ArrayList();
+        
+        Map sg = new java.util.HashMap();
+        sg.put("code", "SG");
+        sg.put("name", "Singapore");
+        countries.add(sg);
+        
+        Map in = new java.util.HashMap();
+        in.put("code", "IN");
+        in.put("name", "India");
+        countries.add(in);
+        
+        Map my = new java.util.HashMap();
+        my.put("code", "MY");
+        my.put("name", "Malaysia");
+        countries.add(my);
+        
+        responseData.put("supportedCountries", countries);
+        rulesList.add("Supported Countries Rule");
+end
+
+rule "Individual Products Rule"
+    salience 900
+    when
+        $request : Map(this["action"] == "getIndividualProducts")
+    then
+        List products = new ArrayList();
+        String country = (String) $request.get("country");
+        
+        // Default products for all countries
+        Map savings = new java.util.HashMap();
+        savings.put("code", "SAVINGS");
+        savings.put("name", "Savings Account");
+        savings.put("description", "Personal savings account with competitive interest rates");
+        products.add(savings);
+        
+        Map current = new java.util.HashMap();
+        current.put("code", "CURRENT");
+        current.put("name", "Current Account");
+        current.put("description", "Everyday banking account for personal use");
+        products.add(current);
+        
+        if ("SINGAPORE".equals(country) || "SG".equals(country)) {
+            Map investment = new java.util.HashMap();
+            investment.put("code", "INVESTMENT");
+            investment.put("name", "Investment Account (SG)");
+            investment.put("description", "Singapore-specific investment options");
+            products.add(investment);
+        }
+        
+        Map creditCard = new java.util.HashMap();
+        creditCard.put("code", "CREDIT_CARD");
+        creditCard.put("name", "Credit Card");
+        creditCard.put("description", "Flexible payment options with rewards");
+        products.add(creditCard);
+        
+        responseData.put("products", products);
+        rulesList.add("Individual Products Rule");
+end
+
+rule "Corporate Products Rule"
+    salience 900
+    when
+        $request : Map(this["action"] == "getCorporateProducts")
+    then
+        List products = new ArrayList();
+        String country = (String) $request.get("country");
+        
+        Map casa = new java.util.HashMap();
+        casa.put("code", "CASA");
+        casa.put("name", "Current Account Savings Account");
+        casa.put("description", "Basic banking account for corporate customers");
+        products.add(casa);
+        
+        Map fx = new java.util.HashMap();
+        fx.put("code", "FX");
+        fx.put("name", "Foreign Exchange");
+        fx.put("description", "Foreign exchange trading and hedging services");
+        products.add(fx);
+        
+        Map trading = new java.util.HashMap();
+        trading.put("code", "TRADING");
+        trading.put("name", "Securities Trading");
+        trading.put("description", "Securities and derivatives trading account");
+        products.add(trading);
+
+        if ("SINGAPORE".equals(country) || "SG".equals(country)) {
+            // Add SG specific versions or additional products if needed
+        }
+        
+        responseData.put("products", products);
+        rulesList.add("Corporate Products Rule");
+end

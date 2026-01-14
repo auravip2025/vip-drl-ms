@@ -2,20 +2,20 @@ package com.example.kyc.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "Corporate KYC Request")
-public class CorporateKycRequest {
+@Schema(description = "Individual Product KYC Request")
+public class IndividualProductKycRequest {
     
-    @Schema(description = "Product type for corporate customer", example = "FX", required = true,
-            allowableValues = {"CASA", "FX", "TRADING"})
+    @Schema(description = "Product type for individual customer", example = "SAVINGS", required = true,
+            allowableValues = {"SAVINGS", "CURRENT", "FIXED_DEPOSIT", "INVESTMENT", "LOAN", "CREDIT_CARD"})
     private String product;
 
-    @Schema(description = "Country of operation", example = "SINGAPORE")
+    @Schema(description = "Country of residence/operation", example = "SINGAPORE")
     private String country;
 
     // Constructors
-    public CorporateKycRequest() {}
+    public IndividualProductKycRequest() {}
 
-    public CorporateKycRequest(String product, String country) {
+    public IndividualProductKycRequest(String product, String country) {
         this.product = product;
         this.country = country;
     }

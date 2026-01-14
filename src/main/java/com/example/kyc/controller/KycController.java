@@ -31,6 +31,9 @@ public class KycController {
     private final Function<Map<String, Object>, Map<String, Object>> getAccountTypes;
     private final Function<Map<String, Object>, Map<String, Object>> getCorporateKycRequirements;
     private final Function<Map<String, Object>, Map<String, Object>> getCorporateProductsFunc;
+    private final Function<Map<String, Object>, Map<String, Object>> getSupportedCountries;
+    private final Function<Map<String, Object>, Map<String, Object>> getIndividualProductsFunc;
+    private final Function<Map<String, Object>, Map<String, Object>> getIndividualProductKycRequirements;
 
     public KycController(
             Function<Map<String, Object>, Map<String, Object>> getKycRequirements,
@@ -38,13 +41,19 @@ public class KycController {
             Function<Map<String, Object>, Map<String, Object>> getCustomerTypes,
             Function<Map<String, Object>, Map<String, Object>> getAccountTypes,
             Function<Map<String, Object>, Map<String, Object>> getCorporateKycRequirements,
-            Function<Map<String, Object>, Map<String, Object>> getCorporateProducts) {
+            Function<Map<String, Object>, Map<String, Object>> getCorporateProducts,
+            Function<Map<String, Object>, Map<String, Object>> getSupportedCountries,
+            Function<Map<String, Object>, Map<String, Object>> getIndividualProducts,
+            Function<Map<String, Object>, Map<String, Object>> getIndividualProductKycRequirements) {
         this.getKycRequirements = getKycRequirements;
         this.health = health;
         this.getCustomerTypes = getCustomerTypes;
         this.getAccountTypes = getAccountTypes;
         this.getCorporateKycRequirements = getCorporateKycRequirements;
         this.getCorporateProductsFunc = getCorporateProducts;
+        this.getSupportedCountries = getSupportedCountries;
+        this.getIndividualProductsFunc = getIndividualProducts;
+        this.getIndividualProductKycRequirements = getIndividualProductKycRequirements;
     }
 
     @PostMapping("/requirements")
@@ -75,6 +84,7 @@ public class KycController {
         requestMap.put("accountType", request.getAccountType());
         requestMap.put("nationality", request.getNationality());
         requestMap.put("pep", request.getPep());
+        requestMap.put("country", request.getCountry());
         return getKycRequirements.apply(requestMap);
     }
 
@@ -108,6 +118,47 @@ public class KycController {
         return getAccountTypes.apply(null);
     }
 
+    @GetMapping("/products")
+    @Operation(summary = "Get Individual Products", description = "List all available individual banking products with descriptions")
+    @ApiResponse(responseCode = "200", description = "List of individual products with descriptions",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(value = "{\"products\":[{\"code\":\"SAVINGS\",\"name\":\"Savings Account\",\"description\":\"Personal savings account with competitive interest rates\"}]}")
+            ))
+    public Map<String, Object> getIndividualProducts(@RequestParam(required = false) String country) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("country", country);
+        return getIndividualProductsFunc.apply(request);
+    }
+
+    @PostMapping("/product/requirements")
+    @Operation(
+            summary = "Get Individual Product KYC Requirements",
+            description = "Returns nested JSON Schema with product-specific KYC requirements for individual customers (SAVINGS, CURRENT, FIXED_DEPOSIT, INVESTMENT, LOAN, CREDIT_CARD)"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved individual product KYC requirements",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(name = "Individual SAVINGS Product",
+                                    value = "{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"title\":\"Singapore KYC Form\",\"type\":\"object\",\"properties\":{\"personal_details\":{\"type\":\"object\",\"title\":\"Personal Details\"},\"contact_details\":{\"type\":\"object\",\"title\":\"Contact Details\"}},\"x-metadata\":{\"customerType\":\"INDIVIDUAL\",\"accountType\":\"SAVINGS\",\"riskLevel\":\"LOW\"}}")
+                    ))
+    })
+    public Map<String, Object> getIndividualProductRequirements(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Individual product KYC request",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = com.example.kyc.model.IndividualProductKycRequest.class)
+                    )
+            )
+            @RequestBody com.example.kyc.model.IndividualProductKycRequest request) {
+        Map<String, Object> requestMap = new HashMap<>();
+        requestMap.put("product", request.getProduct());
+        requestMap.put("country", request.getCountry());
+        return getIndividualProductKycRequirements.apply(requestMap);
+    }
+
     @PostMapping("/corporate/requirements")
     @Operation(
             summary = "Get Corporate KYC Requirements",
@@ -133,6 +184,7 @@ public class KycController {
             @RequestBody CorporateKycRequest request) {
         Map<String, Object> requestMap = new HashMap<>();
         requestMap.put("product", request.getProduct());
+        requestMap.put("country", request.getCountry());
         return getCorporateKycRequirements.apply(requestMap);
     }
 
@@ -142,7 +194,19 @@ public class KycController {
             content = @Content(mediaType = "application/json",
                     examples = @ExampleObject(value = "{\"products\":[{\"code\":\"CASA\",\"name\":\"Current Account Savings Account\",\"description\":\"Basic banking account for corporate customers\"},{\"code\":\"FX\",\"name\":\"Foreign Exchange\",\"description\":\"Foreign exchange trading and hedging services\"},{\"code\":\"TRADING\",\"name\":\"Securities Trading\",\"description\":\"Securities and derivatives trading account\"}]}")
             ))
-    public Map<String, Object> getCorporateProducts() {
-        return getCorporateProductsFunc.apply(null);
+    public Map<String, Object> getCorporateProducts(@RequestParam(required = false) String country) {
+        Map<String, Object> request = new HashMap<>();
+        request.put("country", country);
+        return getCorporateProductsFunc.apply(request);
+    }
+
+    @GetMapping("/supported-countries")
+    @Operation(summary = "Get Supported Countries", description = "List all supported countries for KYC processing from Drools rules")
+    @ApiResponse(responseCode = "200", description = "List of supported countries",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(value = "{\"countries\":[{\"code\":\"SG\",\"name\":\"Singapore\"},{\"code\":\"IN\",\"name\":\"India\"},{\"code\":\"MY\",\"name\":\"Malaysia\"}]}")
+            ))
+    public Map<String, Object> getSupportedCountries() {
+        return getSupportedCountries.apply(null);
     }
 }

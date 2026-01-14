@@ -44,6 +44,11 @@ public class KycFunctions {
                 return createErrorResponse("customerType and accountType are required");
             }
 
+            // Set defaults
+            if (request.get("country") == null) {
+                request.put("country", "SINGAPORE");
+            }
+
             // Initialize collections for rule outputs
             List<Map<String, Object>> fieldsList = new ArrayList<>();
             List<String> rulesList = new ArrayList<>();
@@ -123,6 +128,104 @@ public class KycFunctions {
     }
 
     /**
+     * Function to get available individual products with descriptions.
+     */
+    @Bean
+    public Function<Map<String, Object>, Map<String, Object>> getIndividualProducts() {
+        return request -> {
+            logger.info("Fetching individual products for country: {}", request.get("country"));
+            
+            Map<String, Object> responseData = new HashMap<>();
+            List<String> rulesList = new ArrayList<>();
+            
+            Map<String, Object> ruleRequest = new HashMap<>();
+            ruleRequest.put("action", "getIndividualProducts");
+            ruleRequest.put("country", request.get("country"));
+
+            KieSession kieSession = kieContainer.newKieSession();
+            try {
+                kieSession.setGlobal("responseData", responseData);
+                kieSession.setGlobal("rulesList", rulesList);
+                kieSession.setGlobal("fieldsList", new ArrayList<>());
+                kieSession.setGlobal("documentsList", new ArrayList<>());
+                kieSession.setGlobal("instructionsList", new ArrayList<>());
+
+                kieSession.insert(ruleRequest);
+                kieSession.fireAllRules();
+            } finally {
+                kieSession.dispose();
+            }
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("products", responseData.get("products"));
+            response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            return response;
+        };
+    }
+
+    /**
+     * Function to get individual KYC requirements based on product.
+     */
+    @Bean
+    public Function<Map<String, Object>, Map<String, Object>> getIndividualProductKycRequirements() {
+        return request -> {
+            logger.info("Processing Individual Product KYC requirements for: product={}", request.get("product"));
+
+            // Validate required fields
+            if (request.get("product") == null) {
+                return createErrorResponse("product is required");
+            }
+
+            // Map product to accountType and set defaults
+            request.put("customerType", "INDIVIDUAL");
+            request.put("accountType", request.get("product"));
+            
+            // Default nationality if not provided
+            if (request.get("nationality") == null) {
+                request.put("nationality", "SINGAPORE");
+            }
+            if (request.get("pep") == null) {
+                request.put("pep", false);
+            }
+            if (request.get("country") == null) {
+                request.put("country", "SINGAPORE");
+            }
+
+            // Initialize collections for rule outputs
+            List<Map<String, Object>> fieldsList = new ArrayList<>();
+            List<String> rulesList = new ArrayList<>();
+            List<String> documentsList = new ArrayList<>();
+            List<String> instructionsList = new ArrayList<>();
+            Map<String, Object> responseData = new HashMap<>();
+
+            // Set defaults
+            responseData.put("riskLevel", "LOW");
+            responseData.put("enhancedDueDiligenceRequired", false);
+            responseData.put("estimatedProcessingDays", 3);
+
+            // Execute rules
+            KieSession kieSession = kieContainer.newKieSession();
+            try {
+                kieSession.setGlobal("fieldsList", fieldsList);
+                kieSession.setGlobal("rulesList", rulesList);
+                kieSession.setGlobal("documentsList", documentsList);
+                kieSession.setGlobal("instructionsList", instructionsList);
+                kieSession.setGlobal("responseData", responseData);
+
+                kieSession.insert(request);
+                int rulesFired = kieSession.fireAllRules();
+                logger.info("Fired {} rules", rulesFired);
+
+            } finally {
+                kieSession.dispose();
+            }
+
+            // Build response
+            return buildResponse(request, fieldsList, rulesList, documentsList, instructionsList, responseData);
+        };
+    }
+
+    /**
      * Function to get corporate KYC requirements based on product.
      * Products: CASA, FX, TRADING
      */
@@ -138,6 +241,10 @@ public class KycFunctions {
 
             // Set customer type to CORPORATE
             request.put("customerType", "CORPORATE");
+
+            if (request.get("country") == null) {
+                request.put("country", "SINGAPORE");
+            }
 
             // Initialize collections for rule outputs
             List<Map<String, Object>> fieldsList = new ArrayList<>();
@@ -179,12 +286,71 @@ public class KycFunctions {
     @Bean
     public Function<Map<String, Object>, Map<String, Object>> getCorporateProducts() {
         return request -> {
+            logger.info("Fetching corporate products for country: {}", request.get("country"));
+            
+            Map<String, Object> responseData = new HashMap<>();
+            List<String> rulesList = new ArrayList<>();
+            
+            Map<String, Object> ruleRequest = new HashMap<>();
+            ruleRequest.put("action", "getCorporateProducts");
+            ruleRequest.put("country", request.get("country"));
+
+            KieSession kieSession = kieContainer.newKieSession();
+            try {
+                kieSession.setGlobal("responseData", responseData);
+                kieSession.setGlobal("rulesList", rulesList);
+                kieSession.setGlobal("fieldsList", new ArrayList<>());
+                kieSession.setGlobal("documentsList", new ArrayList<>());
+                kieSession.setGlobal("instructionsList", new ArrayList<>());
+
+                kieSession.insert(ruleRequest);
+                kieSession.fireAllRules();
+            } finally {
+                kieSession.dispose();
+            }
+
             Map<String, Object> response = new LinkedHashMap<>();
-            response.put("products", Arrays.asList(
-                Map.of("code", "CASA", "name", "Current Account Savings Account", "description", "Basic banking account for corporate customers"),
-                Map.of("code", "FX", "name", "Foreign Exchange", "description", "Foreign exchange trading and hedging services"),
-                Map.of("code", "TRADING", "name", "Securities Trading", "description", "Securities and derivatives trading account")
-            ));
+            response.put("products", responseData.get("products"));
+            response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            return response;
+        };
+    }
+
+    /**
+     * Function to get supported countries from Drools rules.
+     */
+    @Bean
+    public Function<Map<String, Object>, Map<String, Object>> getSupportedCountries() {
+        return request -> {
+            logger.info("Fetching supported countries from rules");
+            
+            // Initialize collections
+            Map<String, Object> responseData = new HashMap<>();
+            List<String> rulesList = new ArrayList<>();
+            
+            // Set action to trigger specific rule
+            Map<String, Object> ruleRequest = new HashMap<>();
+            ruleRequest.put("action", "getSupportedCountries");
+
+            KieSession kieSession = kieContainer.newKieSession();
+            try {
+                kieSession.setGlobal("responseData", responseData);
+                kieSession.setGlobal("rulesList", rulesList);
+                // Providing other globals if the DRL expects them
+                kieSession.setGlobal("fieldsList", new ArrayList<>());
+                kieSession.setGlobal("documentsList", new ArrayList<>());
+                kieSession.setGlobal("instructionsList", new ArrayList<>());
+
+                kieSession.insert(ruleRequest);
+                kieSession.fireAllRules();
+                logger.info("Fired rules for supported countries");
+            } finally {
+                kieSession.dispose();
+            }
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("countries", responseData.get("supportedCountries"));
+            response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             return response;
         };
     }

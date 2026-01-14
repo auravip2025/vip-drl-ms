@@ -19,14 +19,18 @@ public class IndividualKycRequest {
     @Schema(description = "Is the customer a Politically Exposed Person?", example = "false", required = true)
     private Boolean pep;
 
+    @Schema(description = "Country of residence/operation", example = "SINGAPORE")
+    private String country;
+
     // Constructors
     public IndividualKycRequest() {}
 
-    public IndividualKycRequest(String customerType, String accountType, String nationality, Boolean pep) {
+    public IndividualKycRequest(String customerType, String accountType, String nationality, Boolean pep, String country) {
         this.customerType = customerType;
         this.accountType = accountType;
         this.nationality = nationality;
         this.pep = pep;
+        this.country = country;
     }
 
     // Getters and Setters
@@ -60,5 +64,13 @@ public class IndividualKycRequest {
 
     public void setPep(Boolean pep) {
         this.pep = pep;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
     }
 }
